@@ -1,9 +1,21 @@
-dojo.provide("Slider.widget.slider");
-dojo.require("dijit.form.Slider");
 
-mendix.widget.declare('Slider.widget.slider', {
-	addons       : [mendix.addon._Contextable],
-    inputargs: { 
+define([
+	"dojo/_base/declare",
+	"mxui/widget/_WidgetBase",
+	"dijit/form/HorizontalSlider",
+	"dijit/form/HorizontalRuleLabels",
+	"dijit/form/HorizontalRule",
+	"dijit/form/VerticalRuleLabels",
+	"dijit/form/VerticalRule",
+	"dijit/form/VerticalSlider",
+	"mxui/dom",
+	"dojo/dom-construct",
+	"dojo/_base/lang",
+	"dojo/dom-style",
+	"dojo/string"
+],
+function (declare, _WidgetBase, HorizontalSlider, HorizontalRuleLabels, HorizontalRule, VerticalRuleLabels, VerticalRule, VerticalSlider, dom, domConstruct,lang, domStyle, dojoString) {
+	return declare("Slider.widget.slider", [ _WidgetBase ], {
 		name : '',
 		sliderWidth  : 300,
 		sliderHeight  : 50,
@@ -11,8 +23,8 @@ mendix.widget.declare('Slider.widget.slider', {
 		onchangemf : '',
 		includeEmpty : false,
 		emptyCaption : '',
-		enumExceptions : ''
-    },
+		enumExceptions : '',
+ 
 	
 	//IMPLEMENTATION
 	isInactive : false,
@@ -25,16 +37,16 @@ mendix.widget.declare('Slider.widget.slider', {
 	
 	getSlideEnum : function(context) {
 		this.context = context;
-		var trackClass = context.getTrackClass ? context.getTrackClass() : context.trackClass; //MWE: getTrackClass() does not exist anymore in 3.0
-		if (trackClass == '')
-			return;
+		// var trackClass = context.getTrackClass ? context.getTrackClass() : context.trackClass; //MWE: getTrackClass() does not exist anymore in 3.0
+		// if (trackClass == '')
+		// 	return;
 		
-		var meta = mx.metadata.getMetaEntity({ className: trackClass });
+		var meta = mx.meta.getEntity(context.getEntity());;
 		this.slideEnum = [];
 		if (this.enumExceptions != '')
 			this.exceptions = this.enumExceptions.split(",");
 		
-		if(meta && meta.getAttributeClass(this.name) == 'Enum') {
+		if(meta && meta.getAttributeType(this.name) == 'Enum') {
 			this.slideEnum = meta.getEnumMap(this.name);
 			var spliceList = [];
 			if (this.exceptions)
@@ -63,10 +75,10 @@ mendix.widget.declare('Slider.widget.slider', {
 		var enumArray = [];
 		var longestStr = '';
 		if (this.slideEnum && this.slideEnum.length > 0) {
-			dojo.empty(this.domNode);
-			var currentValue = mxobject.getAttribute(this.name);
+			domConstruct.empty(this.domNode);
+			var currentValue = mxobject.get(this.name);
 			for (var i = 0; i < this.slideEnum.length; i++) {
-				var strSize = mendix.dom.getStringSize(this.slideEnum[i].caption);
+				var strSize = (this.slideEnum[i].caption).length;
 				if (this.slideEnum[i].key == currentValue)
 					this.currentNr = i;
 				
@@ -76,14 +88,14 @@ mendix.widget.declare('Slider.widget.slider', {
 			}
 			var enumcount = this.slideEnum.length;
 			if (this.direction == "horizontal") {
-				var sliderRuleLabels = new dijit.form.HorizontalRuleLabels({
+				var sliderRuleLabels = new HorizontalRuleLabels({
 					container: 'bottomDecoration',
 					labels: enumArray,
 					style: 'cursor: pointer',
-					onMouseUp : dojo.hitch(this, function (e) {
+					onMouseUp : lang.hitch(this, function (e) {
 						var value = e.target.innerHTML;
 						if (value.indexOf("<") > -1)
-							value = dojo.trim(value.substring(0, value.indexOf("<") || value.length));
+							value = dojoString.trim(value.substring(0, value.indexOf("<") || value.length));
 						
 						if (value != "") {
 							for (var i = 0; i < this.slideEnum.length; i++) {
@@ -96,15 +108,15 @@ mendix.widget.declare('Slider.widget.slider', {
 						}
 					})
 
-				}, mendix.dom.div());
+				}, dom.create("div"));
 				
-				var sliderRule = new dijit.form.HorizontalRule({
+				var sliderRule = new HorizontalRule({
 					count: enumcount,
 					container: 'bottomDecoration',
 					style: 'width: 100%; height: 5px;'
-				}, mendix.dom.div());
+				}, dom.create("div"));
 				
-				this.slider = new dijit.form.HorizontalSlider({
+				this.slider = new HorizontalSlider({
 					name: "slider_widget",
 					value: this.currentNr,
 					minimum: 0,
@@ -112,12 +124,13 @@ mendix.widget.declare('Slider.widget.slider', {
 					intermediateChanges: true,
 					discreteValues: enumcount,
 					style: "width:"+this.sliderWidth+"px; height: 30px;",
-					onMouseUp: dojo.hitch(this, this.execclick),
-					onBlur: dojo.hitch(this, this.execclick),
-					onChange: dojo.hitch(this, function(value) {
-						this.hasChanged = true;
-						this.onChange();
-					})
+					// onMouseUp: lang.hitch(this, this.execclick),
+					// onBlur: lang.hitch(this, this.execclick),
+					onChange: lang.hitch(this, this.execclick)
+					// lang.hitch(this, function(value) {
+					// 	this.hasChanged = true;
+					// 	this.onChange();
+					// })
 				});
 				
 				this.slider.addChild(sliderRule);
@@ -125,23 +138,23 @@ mendix.widget.declare('Slider.widget.slider', {
 				sliderRuleLabels.startup();
 				sliderRule.startup();
 				this.slider.startup();
-				dojo.style(this.slider.progressBar, "background", "none");
+				domStyle.set(this.slider.progressBar, "background", "none");
 				this.domNode.appendChild(this.slider.domNode);
-				dojo.style(this.slider.containerNode, 'textAlign', 'left');
+				domStyle.set(this.slider.containerNode, 'textAlign', 'left');
 			} else {
 				// Vertical slider is rendered bottom up, so reversing the enum so it still starts at the top.
 				enumArray = enumArray.reverse();
 				this.slideEnum = this.slideEnum.reverse();
 				var flipped = enumArray.length - (this.currentNr+1);
 				
-				var sliderRuleLabels = new dijit.form.VerticalRuleLabels({
+				var sliderRuleLabels = new VerticalRuleLabels({
 					container: 'rightDecoration',
 					style : 'cursor: pointer',
 					labels: enumArray,
-					onMouseUp : dojo.hitch(this, function (e) {
+					onMouseUp : lang.hitch(this, function (e) {
 						var value = e.target.innerHTML;
 						if (value.indexOf("<") > -1)
-							value = dojo.trim(value.substring(0, value.indexOf("<") || value.length));
+							value = dojoString.trim(value.substring(0, value.indexOf("<") || value.length));
 						
 						if (value != "") {
 							for (var i = 0; i < this.slideEnum.length; i++) {
@@ -153,15 +166,15 @@ mendix.widget.declare('Slider.widget.slider', {
 							}
 						}
 					})
-				}, mendix.dom.div());
+				}, dom.create("div"));
 				
-				var sliderRule = new dijit.form.VerticalRule({
+				var sliderRule = new VerticalRule({
 					count: enumcount,
 					container: 'rightDecoration',
 					style: 'width: 5px;'
-				}, mendix.dom.div());
+				}, dom.create("div"));
 				
-				this.slider = new dijit.form.VerticalSlider({
+				this.slider = new VerticalSlider({
 					name: "slider_widget",
 					value: flipped,
 					minimum: 0,
@@ -169,12 +182,13 @@ mendix.widget.declare('Slider.widget.slider', {
 					intermediateChanges: true,
 					discreteValues: enumcount,
 					style: "height: "+this.sliderHeight+"px;",
-					onMouseUp: dojo.hitch(this, this.execclick),
-					onBlur: dojo.hitch(this, this.execclick),
-					onChange: dojo.hitch(this, function(value) {
-						this.hasChanged = true;
-						this.onChange();
-					})
+					// onMouseUp: lang.hitch(this, this.execclick),
+					// onBlur: lang.hitch(this, this.execclick),
+					onChange: lang.hitch(this, this.execclick)
+					// lang.hitch(this, function(value) {
+					// 	this.hasChanged = true;
+					// 	this.onChange();
+					// })
 				});
 				
 				this.slider.addChild(sliderRule);
@@ -182,8 +196,8 @@ mendix.widget.declare('Slider.widget.slider', {
 				sliderRuleLabels.startup();
 				sliderRule.startup();
 				this.slider.startup();
-				dojo.style(this.slider.progressBar, "background", "none");
-				dojo.style(this.domNode, 'height', (this.sliderHeight+50)+"px"); // IE fix.
+				domStyle.set(this.slider.progressBar, "background", "none");
+				domStyle.set(this.domNode, 'height', (this.sliderHeight+50)+"px"); // IE fix.
 				this.domNode.appendChild(this.slider.domNode);
 			}
 		}
@@ -191,13 +205,12 @@ mendix.widget.declare('Slider.widget.slider', {
 	},
 	
 	execclick : function() {
-		if (this.hasChanged == true){ 
-			this.hasChanged = false;
-			if (this.onchangemf != '' && this.context && this.context.getTrackId()) {
-				var context = mx.ui.newContext();
-				context.setContext(this.context.getTrackEntity(), this.context.getTrackId());
-				mx.xas.action({
-					actionname	: this.onchangemf,
+		// if (this.hasChanged == true){ 
+		// 	this.hasChanged = false;
+			if (this.onchangemf != '' && this.context && this.context.getGuid()) {
+				var context = new mendix.lib.MxContext();
+				context.setContext(this.context.getEntity(), this.context.getGuid());
+				mx.ui.action(this.onchangemf,{
 					context		: context,
 					callback	: function() {
 						// ok	
@@ -206,25 +219,26 @@ mendix.widget.declare('Slider.widget.slider', {
 						// error
 					}
 				});
-				mx.ui.destroyContext(context);
 			}
-		}
+		// }
 	},
 	
 	postCreate : function(){
 		//housekeeping
-		dojo.empty(this.domNode);
-		dojo.style(this.domNode, {
+		domConstruct.empty(this.domNode);
+		domStyle.set(this.domNode, {
 			"height" : this.sliderHeight+"px",
 			"width" : this.sliderWidth+"px"
 		});
 		
 		this.exceptions = [];
 		
-		this.initContext();
-		this.actRendered();
 	},
 	
+	resize: function (box) {
+		console.log(this.id + ".resize");
+	},
+
 	_setDisabledAttr : function(value) {
 		this.isInactive = !!value;
 		if (this.slider)
@@ -251,10 +265,13 @@ mendix.widget.declare('Slider.widget.slider', {
 				}
 	},
 	
-	applyContext : function(context, callback){
+	update : function(context, callback){
 		this.getSlideEnum(context);
-		if (context && context.getActiveGUID()) 
-			mx.processor.getObject(context.getActiveGUID(), dojo.hitch(this, this.renderSlide));
+		if (context && context.getGuid()) 
+			mx.data.get({
+				guid: context.getGuid(),
+				callback: lang.hitch(this, this.renderSlide)
+			});
 		else
 			logger.warn(this.id + ".applyContext received empty context");
 		callback && callback();
@@ -264,3 +281,5 @@ mendix.widget.declare('Slider.widget.slider', {
 		this.slider && this.slider.destroyRecursive();
 	}
 });
+});
+require(["Slider/widget/slider"]);
